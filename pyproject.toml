@@ -1,0 +1,41 @@
+[project]
+name = "nano-agentscope"
+version = "0.1.0"
+description = "A simplified educational version of AgentScope - Multi-Agent Framework"
+readme = "README.md"
+authors = [
+    { name = "Your Name", email = "your@email.com" }
+]
+license = "Apache-2.0"
+keywords = ["agents", "llm", "multi-agent", "tutorial"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "dashscope>=1.20.0",
+    "openai>=1.0.0",
+    "pydantic>=2.0.0",
+    "docstring_parser",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+]
+
+[tool.setuptools]
+packages = { find = { where = ["src"] } }
+
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
