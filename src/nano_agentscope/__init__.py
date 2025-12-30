@@ -123,6 +123,20 @@ from .agent import (
     UserAgent,
 )
 
+# RAG 模块
+from .rag import (
+    Document,
+    SimpleKnowledge,
+    create_retrieve_tool,
+)
+
+# Pipeline 模块
+from .pipeline import (
+    sequential_pipeline,
+    loop_pipeline,
+    MsgHub,
+)
+
 
 __all__ = [
     # 版本
@@ -159,5 +173,14 @@ __all__ = [
     "AgentBase",
     "ReActAgent",
     "UserAgent",
+    # RAG
+    "Document",
+    "SimpleKnowledge",
+    "create_retrieve_tool",
+    # Pipeline
+    "sequential_pipeline",
+    "loop_pipeline",
+    "MsgHub",
 ]
+
 
