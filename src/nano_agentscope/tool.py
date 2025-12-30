@@ -34,6 +34,7 @@ class ToolResponse:
     - content: 执行结果内容（文本或其他块）
     - metadata: 元数据（可选）
     - is_last: 是否为最后一个响应块（用于流式）
+    - is_interrupted: 是否被用户中断（用于实时干预）
     
     Example:
         >>> def get_time() -> ToolResponse:
@@ -46,6 +47,7 @@ class ToolResponse:
     content: list[TextBlock] = field(default_factory=list)
     metadata: dict | None = None
     is_last: bool = True
+    is_interrupted: bool = False  # 用于实时中断标记
 
 
 def _parse_function_to_schema(func: Callable) -> dict:

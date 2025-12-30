@@ -315,6 +315,41 @@ class ReActAgent(AgentBase):
         """观察消息，存入记忆但不产生回复"""
         await self.memory.add(msg)
     
+    async def handle_interrupt(
+        self,
+        msg: Msg | list[Msg] | None = None,
+    ) -> Msg:
+        """处理用户中断 - 当执行被用户打断时调用
+        
+        当用户在 Agent 执行过程中发起中断时，会调用此方法。
+        子类可以覆盖此方法以自定义中断后的行为。
+        
+        学习要点：
+        - 实时干预是 Agent 系统的重要特性
+        - 允许用户随时打断并修改 Agent 行为
+        - 确保中断后系统状态的一致性
+        
+        Args:
+            msg: 原始输入消息（用于上下文）
+            
+        Returns:
+            中断后的响应消息
+        """
+        response = Msg(
+            name=self.name,
+            content="我注意到您中断了我的执行。请问需要我做什么？",
+            role="assistant",
+            metadata={"_is_interrupted": True},
+        )
+        
+        # 将中断响应存入记忆
+        await self.memory.add(response)
+        
+        # 打印响应
+        print(f"\n{self.name}: {response.get_text_content()}")
+        
+        return response
+    
     def _print_llm_request(self, messages: list[dict], tools: list[dict] | None) -> None:
         """打印 LLM 请求日志"""
         import os

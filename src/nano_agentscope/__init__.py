@@ -137,6 +137,13 @@ from .pipeline import (
     MsgHub,
 )
 
+# Steering 模块 (实时干预)
+from .steering import (
+    SteerableAgent,
+    create_human_intervention_tool,
+    create_confirmation_tool,
+)
+
 
 __all__ = [
     # 版本
@@ -181,6 +188,11 @@ __all__ = [
     "sequential_pipeline",
     "loop_pipeline",
     "MsgHub",
+    # Steering (实时干预)
+    "SteerableAgent",
+    "create_human_intervention_tool",
+    "create_confirmation_tool",
 ]
+
 
 
