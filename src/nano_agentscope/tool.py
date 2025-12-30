@@ -15,7 +15,10 @@
 import inspect
 import json
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any, Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .mcp import MCPToolFunction, HttpStatelessClient
 
 from docstring_parser import parse
 from pydantic import BaseModel, Field, create_model
@@ -239,10 +242,15 @@ class Toolkit:
         kwargs = tool_call.get("input", {}) or {}
         
         try:
-            # 执行函数（支持同步和异步）
+            # 执行函数（支持同步、异步函数和可调用对象如 MCPToolFunction）
             if inspect.iscoroutinefunction(func):
+                # 异步函数
+                result = await func(**kwargs)
+            elif hasattr(func, '__call__') and inspect.iscoroutinefunction(func.__call__):
+                # 具有异步 __call__ 的对象（如 MCPToolFunction）
                 result = await func(**kwargs)
             else:
+                # 同步函数
                 result = func(**kwargs)
             
             # 确保返回 ToolResponse
@@ -263,6 +271,78 @@ class Toolkit:
     def clear(self) -> None:
         """清空所有工具"""
         self._tools.clear()
+    
+    # ============== MCP 支持 ==============
+    
+    def register_mcp_tool_function(
+        self,
+        mcp_func: "MCPToolFunction",
+    ) -> None:
+        """注册 MCP 工具函数
+        
+        将 MCPToolFunction 对象注册到工具管理器中。
+        
+        Args:
+            mcp_func: MCPToolFunction 对象
+            
+        Example:
+            >>> func = await client.get_callable_function("get_weather")
+            >>> toolkit.register_mcp_tool_function(func)
+        """
+        # 存储 MCP 函数，使用其内置的 json_schema
+        self._tools[mcp_func.name] = (mcp_func, mcp_func.json_schema)
+    
+    async def register_mcp_client(
+        self,
+        mcp_client: "HttpStatelessClient",
+        enable_funcs: list[str] | None = None,
+        disable_funcs: list[str] | None = None,
+    ) -> None:
+        """注册 MCP 客户端的所有工具函数
+        
+        连接到 MCP 服务器，获取所有可用工具并注册。
+        
+        Args:
+            mcp_client: HttpStatelessClient 实例
+            enable_funcs: 只注册这些函数（可选）
+            disable_funcs: 排除这些函数（可选）
+            
+        Example:
+            >>> client = HttpStatelessClient(
+            ...     name="gaode",
+            ...     transport="streamable_http", 
+            ...     url="https://mcp.amap.com/mcp",
+            ... )
+            >>> await toolkit.register_mcp_client(client)
+        """
+        # 检查参数冲突
+        if enable_funcs is not None and disable_funcs is not None:
+            intersection = set(enable_funcs) & set(disable_funcs)
+            if intersection:
+                raise ValueError(
+                    f"enable_funcs 和 disable_funcs 不能有重叠: {intersection}"
+                )
+        
+        # 获取工具列表
+        tools = await mcp_client.list_tools()
+        
+        registered_count = 0
+        for tool in tools:
+            # 过滤
+            if enable_funcs is not None and tool.name not in enable_funcs:
+                continue
+            if disable_funcs is not None and tool.name in disable_funcs:
+                continue
+            
+            # 获取可调用函数并注册
+            func = await mcp_client.get_callable_function(
+                func_name=tool.name,
+                wrap_tool_result=True,
+            )
+            self.register_mcp_tool_function(func)
+            registered_count += 1
+        
+        print(f"已从 MCP '{mcp_client.name}' 注册 {registered_count} 个工具函数")
 
 
 # ============== 示例工具函数 ==============

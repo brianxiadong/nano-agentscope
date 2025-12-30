@@ -19,6 +19,7 @@ dependencies = [
     "openai>=1.0.0",
     "pydantic>=2.0.0",
     "docstring_parser",
+    "mcp>=1.13",
 ]
 
 [project.optional-dependencies]

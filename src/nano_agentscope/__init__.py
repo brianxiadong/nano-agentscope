@@ -103,6 +103,12 @@ from .tool import (
     get_current_time,
 )
 
+# MCP 模块
+from .mcp import (
+    HttpStatelessClient,
+    MCPToolFunction,
+)
+
 # 格式化模块
 from .formatter import (
     FormatterBase,
@@ -142,6 +148,9 @@ __all__ = [
     "ToolResponse",
     "calculator",
     "get_current_time",
+    # MCP
+    "HttpStatelessClient",
+    "MCPToolFunction",
     # 格式化
     "FormatterBase",
     "OpenAIFormatter",

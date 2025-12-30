@@ -142,3 +142,6 @@ docs/tutorial/**/doctrees/
 docs/tutorial/**/.doctrees/
 *.buildinfo
 *.pickle
+
+# uv
+uv.lock

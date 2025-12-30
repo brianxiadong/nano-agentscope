@@ -191,6 +191,9 @@ class ReActAgent(AgentBase):
         # 获取工具 schema
         tools = self.toolkit.get_json_schemas() or None
         
+        # 打印请求日志
+        self._print_llm_request(formatted_msgs, tools)
+        
         # 调用模型
         response = await self.model(
             messages=formatted_msgs,
@@ -224,6 +227,10 @@ class ReActAgent(AgentBase):
         if not self.model.stream:
             self._print_response(response_msg)
         
+        # 打印 Token 使用统计
+        if response and response.usage:
+            self._print_token_usage(response.usage)
+        
         return response_msg
     
     async def _acting(self, tool_call: ToolUseBlock) -> None:
@@ -232,6 +239,9 @@ class ReActAgent(AgentBase):
         Args:
             tool_call: 工具调用块
         """
+        # 打印工具调用日志
+        self._print_tool_call(tool_call)
+        
         # 执行工具
         tool_result = await self.toolkit.call_tool_function(tool_call)
         
@@ -305,6 +315,80 @@ class ReActAgent(AgentBase):
         """观察消息，存入记忆但不产生回复"""
         await self.memory.add(msg)
     
+    def _print_llm_request(self, messages: list[dict], tools: list[dict] | None) -> None:
+        """打印 LLM 请求日志"""
+        import os
+        import json
+        
+        # 检查是否启用详细日志
+        verbose = os.environ.get("NANO_AGENTSCOPE_VERBOSE", "0") == "1"
+        
+        if not verbose:
+            return
+        
+        print("\n" + "=" * 80)
+        print("🤖 [LLM 请求]")
+        print("=" * 80)
+        
+        # 打印消息列表
+        print(f"\n📝 消息数量: {len(messages)}")
+        for i, msg in enumerate(messages, 1):
+            role = msg.get("role", "unknown")
+            content = msg.get("content", "")
+            
+            # 截取内容预览
+            if isinstance(content, str):
+                preview = content[:200] + "..." if len(content) > 200 else content
+            elif isinstance(content, list):
+                preview = f"[{len(content)} 个内容块]"
+            else:
+                preview = str(content)[:200]
+            
+            print(f"  {i}. [{role}] {preview}")
+        
+        # 打印工具信息
+        if tools:
+            print(f"\n🔧 可用工具: {len(tools)}")
+            for tool in tools:
+                func = tool.get("function", {})
+                print(f"  - {func.get('name', 'unknown')}: {func.get('description', '')[:100]}")
+        else:
+            print("\n🔧 可用工具: 无")
+        
+        print("=" * 80)
+    
+    def _print_tool_call(self, tool_call: ToolUseBlock) -> None:
+        """打印工具调用日志"""
+        import json
+        import os
+        
+        verbose = os.environ.get("NANO_AGENTSCOPE_VERBOSE", "0") == "1"
+        
+        if verbose:
+            print(f"\n🔧 [调用工具] {tool_call['name']}")
+            print(f"  参数: {json.dumps(tool_call.get('input', {}), ensure_ascii=False, indent=2)}")
+        else:
+            # 简洁模式
+            params_str = json.dumps(tool_call.get('input', {}), ensure_ascii=False)
+            if len(params_str) > 100:
+                params_str = params_str[:100] + "..."
+            print(f"  [调用工具] {tool_call['name']}: {params_str}")
+    
+    def _print_token_usage(self, usage) -> None:
+        """打印 Token 使用统计"""
+        import os
+        
+        verbose = os.environ.get("NANO_AGENTSCOPE_VERBOSE", "0") == "1"
+        
+        if not verbose:
+            return
+        
+        print(f"\n📊 [Token 使用]")
+        print(f"  输入: {usage.input_tokens} tokens")
+        print(f"  输出: {usage.output_tokens} tokens")
+        print(f"  总计: {usage.input_tokens + usage.output_tokens} tokens")
+        print(f"  耗时: {usage.time:.2f}s")
+    
     def _print_streaming(self, chunk: ChatResponse) -> None:
         """打印流式响应"""
         for block in chunk.content:
@@ -334,12 +418,33 @@ class ReActAgent(AgentBase):
         tool_call: ToolUseBlock,
         result: ToolResponse,
     ) -> None:
-        """打印工具执行结果"""
+        """打印工具执行结果
+        
+        可以通过设置环境变量 NANO_AGENTSCOPE_LOG_MAX_LENGTH 来控制日志长度
+        设置为 0 表示不截断
+        """
+        import os
+        
         text = ""
         for block in result.content:
             if block.get("type") == "text":
                 text += block.get("text", "")
-        print(f"  [工具结果] {tool_call['name']}: {text[:100]}...")
+        
+        # 从环境变量读取最大长度配置，默认 2000，0 表示不截断
+        max_length_str = os.environ.get("NANO_AGENTSCOPE_LOG_MAX_LENGTH", "2000")
+        try:
+            max_length = int(max_length_str)
+        except ValueError:
+            max_length = 2000
+        
+        # 根据配置决定是否截断
+        if max_length > 0 and len(text) > max_length:
+            print(f"  [工具结果] {tool_call['name']}:")
+            print(f"    {text[:max_length]}")
+            print(f"    ... (已截断，总长度: {len(text)} 字符，设置 NANO_AGENTSCOPE_LOG_MAX_LENGTH=0 查看完整日志)")
+        else:
+            # 不截断或文本长度在限制内
+            print(f"  [工具结果] {tool_call['name']}: {text}")
 
 
 class UserAgent(AgentBase):
